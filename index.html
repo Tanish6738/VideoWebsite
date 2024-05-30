@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Landing Page</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        #video-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            object-fit: cover;
+            display: block;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+        }
+
+        .nav-item {
+            cursor: pointer;
+            transition: color 0.3s ease, transform 0.3s ease;
+        }
+
+        .nav-item:hover {
+            color: #fbbf24;
+            /* Tailwind Yellow-400 */
+        }
+
+        .back-to-default,
+        .mute-toggle {
+            margin-left: 10px;
+            /* Tailwind Gray-800 with opacity */
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            cursor: pointer;
+        }
+
+        .content {
+            padding: 2rem;
+        }
+
+        .content h1 {
+            font-size: 4rem;
+            color: #fbbf24;
+            /* Tailwind Yellow-400 */
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .navbar {
+            background: rgba(255, 255, 255, 0.1);
+            /* Glass effect */
+            backdrop-filter: blur(10px);
+        }
+
+        .toggle-navbar {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            background: rgba(31, 41, 55, 0.75);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            cursor: pointer;
+            z-index: 10;
+        }
+
+        #cursor {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            cursor: pointer;
+            position: fixed;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: white;
+            background-color: black;
+            z-index: 100;
+        }
+
+        .hide-navbar {
+            display: none;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-900 text-white">
+    <div class="toggle-navbar bg-transparent">Toggle Navbar</div>
+    <nav class="navbar p-4 flex justify-start items-center">
+        <div class="flex items-center space-x-4">
+            <label for="name-list-type" class="text-xl">Choose Name List Type:</label>
+            <select id="name-list-type" class="mt-2 mb-4 bg-transparent text-white border-2 rounded px-2 py-1">
+                <option class="text-black" value="type1">Marvel</option>
+                <option class="text-black" value="type2">Anime</option>
+                <option class="text-black" value="type3">Transition</option>
+            </select>
+        </div>
+        <div class="flex space-x-4">
+            <div class="back-to-default">Back to Default</div>
+            <div class="mute-toggle">Mute</div>
+        </div>
+    </nav>
+    <ul id="name-list" class="flex space-x-4 p-4"></ul>
+    <video id="video-background" autoplay loop muted></video>
+    <div id="cursor">Click</div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.155.0/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/automat/controlkit.js@master/bin/controlKit.min.js"></script>
+    <script type="text/javascript" src="https://unpkg.com/sheryjs/dist/Shery.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const videoBackground = document.getElementById('video-background');
+            const backToDefaultButton = document.querySelector('.back-to-default');
+            const muteToggleButton = document.querySelector('.mute-toggle');
+            const nameListTypeSelect = document.getElementById('name-list-type');
+            const nameListContainer = document.getElementById('name-list');
+            const toggleNavbarButton = document.querySelector('.toggle-navbar');
+            const navbar = document.querySelector('.navbar');
+            const cursor = document.getElementById('cursor');
+            const defaultVideo = 'default.mp4';
+
+            const generateNameList = (prefix, count, baseColor) => {
+                const colors = ['red', 'yellow', 'green', 'blue', 'indigo', 'purple', 'pink'];
+                const nameList = [];
+                for (let i = 1; i <= count; i++) {
+                    nameList.push({
+                        video: `${baseColor}/${i}.mp4`,
+                        bgcolor: `bg-${colors[(i - 1) % colors.length]}-500`
+                    });
+                }
+                return nameList;
+            };
+
+            // Generate name lists
+            let nameLists = {
+                type1: generateNameList('Marvel', 3, 'marvel'),
+                type2: generateNameList('Animation', 6, 'animation'),
+                type3: generateNameList('Transition', 3, 'transition')
+            };
+
+            let currentType = nameListTypeSelect.value;
+            let currentVideoIndex = 0;
+
+            // Function to populate name list
+            function populateNameList(type) {
+                nameListContainer.innerHTML = '';
+                nameLists[type].forEach(item => {
+                    const li = document.createElement('li');
+                    li.className = 'name-item text-2xl';
+                    li.textContent = item.name;
+                    li.setAttribute('data-video', item.video);
+                    li.setAttribute('data-bgcolor', item.bgcolor);
+                    nameListContainer.appendChild(li);
+                });
+            }
+
+            function changeVideo() {
+                const videos = nameLists[currentType];
+                if (videos.length > 0) {
+                    const currentVideo = videos[currentVideoIndex];
+                    videoBackground.src = currentVideo.video;
+                    document.body.className = currentVideo.bgcolor;
+                    videoBackground.style.opacity = '1';
+                    currentVideoIndex = (currentVideoIndex + 1) % videos.length;
+                }
+            }
+
+            videoBackground.addEventListener('click', changeVideo);
+
+            // Set default video
+            videoBackground.src = defaultVideo;
+            videoBackground.style.opacity = '1';
+
+            // Populate initial name list
+            populateNameList(currentType);
+
+            nameListTypeSelect.addEventListener('change', (event) => {
+                currentType = event.target.value;
+                currentVideoIndex = 0;
+                populateNameList(currentType);
+                changeVideo();
+            });
+
+            backToDefaultButton.addEventListener('click', () => {
+                // Reset to default video and background color
+                videoBackground.src = defaultVideo;
+                document.body.className = '';
+                videoBackground.style.opacity = '1';
+                currentVideoIndex = 0;
+            });
+
+            muteToggleButton.addEventListener('click', () => {
+                videoBackground.muted = !videoBackground.muted;
+                muteToggleButton.textContent = videoBackground.muted ? 'Unmute' : 'Mute';
+            });
+
+            // Toggle navbar visibility
+            toggleNavbarButton.addEventListener('click', () => {
+                navbar.classList.toggle('hide-navbar');
+            });
+
+            // Elastic cursor follower
+            document.addEventListener('mousemove', (e) => {
+                cursor.style.left = e.clientX + 'px';
+                cursor.style.top = e.clientY + 'px';
+                if (e.clientX > window.innerWidth * 0.25 && e.clientX < window.innerWidth * 0.75 && e.clientY > window.innerHeight * 0.25 && e.clientY < window.innerHeight * 0.75) {
+                    cursor.style.opacity = '1';
+                } else {
+                    cursor.style.opacity = '0';
+                }
+            });
+
+            Shery.mouseFollower({
+                skew: true,
+                ease: "cubic-bezier(0.23, 1, 0.320, 1)",
+                duration: 1,
+            });
+        });
+    </script>
+</body>
+
+</html>
